@@ -15,6 +15,9 @@ import org.json.JSONArray;
 import org.json.JSONException; 
 import org.json.JSONObject;
 
+import entity.Item;
+import entity.Item.ItemBuilder;
+
 public class YelpApi {
 	
 	private static final String HOST = "https://api.yelp.com";
@@ -25,7 +28,7 @@ public class YelpApi {
 	private static final String TOKEN_TYPE = "Bearer"; 
 	private static final String API_KEY = "goFjBjcDEtRfhACrb-1S86U-i09Df3QJWvyG_lola2rsVDnLpiZOaeGUiRfbC7hB-Hh4S17q2C6mOQLJuILKiyeAMJGsMxOQrMlPmES0FGnokdNbK2-MNe7XTSA2XXYx";
 	
-	public JSONArray search(double lat, double lon, String term) { 
+	public List<Item> search(double lat, double lon, String term) { 
 		if (term == null || term.isEmpty()) {
 			term = DEFAULT_TERM;
 		}
@@ -48,7 +51,7 @@ public class YelpApi {
 			System.out.println("response code " + responseCode);
 			
 			if (responseCode != 200) {
-				return new JSONArray();
+				return new ArrayList<>();
 			}
 			
 			BufferedReader in = new BufferedReader(new InputStreamReader(connection.getInputStream()));
@@ -64,25 +67,90 @@ public class YelpApi {
 			
 			JSONObject object = new JSONObject(response.toString());
 			if (!object.isNull("businesses")) {
-				return object.getJSONArray("businesses");
+				return getItem(object.getJSONArray("businesses"));
 			}
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
 		
-		return new JSONArray();
+		return new ArrayList<>();
+	}
+	
+	private List<Item> getItem(JSONArray restaurants) throws JSONException {
+		List<Item> list = new ArrayList<>();
+		for (int i = 0; i < restaurants.length(); i++) {
+			JSONObject restaurant = restaurants.getJSONObject(i);
+			ItemBuilder builder = new ItemBuilder();
+			
+			if (!restaurant.isNull("id")) {
+				builder.setItemId(restaurant.getString("id"));
+			}
+			
+			if (!restaurant.isNull("name")) {
+				builder.setName(restaurant.getString("name"));
+			}
+			
+			if (!restaurant.isNull("url")) {
+				builder.setUrl(restaurant.getString("url"));
+			}
+			
+			if (!restaurant.isNull("image_url")) {
+				builder.setImageUrl(restaurant.getString("image_url"));
+			}
+			
+			if (!restaurant.isNull("distance")) {
+				builder.setDistance(restaurant.getDouble("distance"));
+			}
+			
+			if (!restaurant.isNull("rating")) {
+				builder.setRating(restaurant.getDouble("rating"));
+			}
+			
+			builder.setAddress(getAddress(restaurant));
+			builder.setCategories(getCategories(restaurant));
+			list.add(builder.build());	
+		}
+		return list;
+	}
+	
+	private String getAddress(JSONObject restaurant) throws JSONException {
+		String address = "";
+		
+		if (!restaurant.isNull("location")) {
+			JSONObject location = restaurant.getJSONObject("location"); 
+			if (!location.isNull("display_address")) {
+				JSONArray displayAddress = location.getJSONArray("display_address");
+				address = displayAddress.join(",");
+			} 
+		}
+		return address;
+	}
+	
+	private Set<String> getCategories(JSONObject restaurant) throws JSONException {
+		Set<String> categories = new HashSet<>();
+		
+		if (!restaurant.isNull("categories")) {
+			JSONArray array = restaurant.getJSONArray("categories"); 
+			for (int i = 0; i < array.length(); ++i) {
+				JSONObject category = array.getJSONObject(i); 
+				if (!category.isNull("alias")) {
+					categories.add(category.getString("alias"));
+				} 
+			}
+		}
+		return categories;
 	}
 	
 	private void queryApi(double lat, double lon) {
-		JSONArray items = search(lat, lon, null);
-		try {
-			for (int i = 0; i < items.length(); i++) {
-				JSONObject item = items.getJSONObject(i);
-				System.out.println(item.toString());
+		List<Item> itemList = search(lat, lon, null); 
+		try {	
+			for (Item item : itemList) {
+				JSONObject jsonObject = item.toJSONObject(); 
+				System.out.println(jsonObject);
 			}
 		} catch (Exception e) {
 			e.printStackTrace();
-		}	
+		}
 	}
 	
 	/**
