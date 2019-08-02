@@ -12,6 +12,7 @@ import javax.servlet.http.HttpServletResponse;
 
 import org.json.JSONArray;
 
+import db.DBConnection;
 import entity.Item;
 import external.YelpApi;
 
@@ -34,18 +35,23 @@ public class SearchItem extends HttpServlet {
 	 * @see HttpServlet#doGet(HttpServletRequest request, HttpServletResponse response)
 	 */
 	protected void doGet(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
-		double lat = Double.parseDouble(request.getParameter("lat")); 
+		double lat = Double.parseDouble(request.getParameter("lat"));
 		double lon = Double.parseDouble(request.getParameter("lon"));
-		YelpApi yelpApi = new YelpApi();
-		List<Item> items = yelpApi.search(lat, lon, null);
+		String term = request.getParameter("term");
 		
-		// DB operations
-		 
-		JSONArray array = new JSONArray(); 
-		for (Item item : items) {
-			array.put(item.toJSONObject());
+		DBConnection connection = new DBConnection();
+		try {
+			List<Item> items = connection.searchItems(lat, lon, term);
+			JSONArray array = new JSONArray(); 
+			for (Item item : items) {
+				array.put(item.toJSONObject()); 
+				RpcHelper.writeJsonArray(response, array);
+			}
+		} catch (Exception e) { 
+			e.printStackTrace();
+		} finally { 
+			connection.close();
 		}
-		RpcHelper.writeJsonArray(response, array);
 	}
 
 	/**
