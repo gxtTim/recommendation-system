@@ -1,6 +1,6 @@
 package db;
 
-public class DBUtil {
+public class DBUtility {
 	private static final String HOSTNAME = "localhost";
 	private static final String PORT_NUM = "8889";// change it to your mysql port number
 	public static final String DB_NAME = "yelp_project";
