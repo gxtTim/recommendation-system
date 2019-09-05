@@ -76,15 +76,76 @@ public class DBConnection {
 	}
 	
 	public Set<String> getFavoriteItemIds(String userId) { 
-		return null;
+		if (connection == null) {
+			System.err.println("DB connection failed"); return new HashSet<>();
+		}
+		Set<String> favoriteItemIds = new HashSet<>(); 
+		try {
+			String sql = "SELECT item_id FROM history WHERE user_id = ?"; 
+			PreparedStatement ps = connection.prepareStatement(sql); 
+			ps.setString(1, userId);
+			ResultSet rs = ps.executeQuery();
+			
+			while (rs.next()) { 
+				favoriteItemIds.add(rs.getString("item_id"));
+			}
+		} catch (Exception e) { 
+			e.printStackTrace();
+		}
+		return favoriteItemIds;
 	}
 	
 	public Set<Item> getFavoriteItems(String userId) { 
-		return null;
+		if (connection == null) {
+			System.err.println("DB connection failed"); 
+			return new HashSet<>();
+		}
+		Set<Item> favoriteItems = new HashSet<>();
+		Set<String> favoriteItemIds = getFavoriteItemIds(userId); 
+		try {
+			String sql = "SELECT * FROM items WHERE item_id = ?"; 
+			PreparedStatement ps = connection.prepareStatement(sql);
+			for (String itemId : favoriteItemIds) { 
+				ps.setString(1, itemId);
+				ResultSet rs = ps.executeQuery();
+				ItemBuilder builder = new ItemBuilder(); 
+				while (rs.next()) {
+					builder.setItemId(rs.getString("item_id")); 
+					builder.setName(rs.getString("name")); 
+					builder.setUrl(rs.getString("url")); 
+					builder.setImageUrl(rs.getString("image_url")); 
+					builder.setAddress(rs.getString("address")); 
+					builder.setRating(rs.getDouble("rating")); 
+					builder.setDistance(rs.getDouble("distance")); 
+					builder.setCategories(getCategories(itemId));
+					
+					favoriteItems.add(builder.build());
+				}
+			}
+		} catch (Exception e) { 
+			e.printStackTrace();
+		}
+		return favoriteItems;
 	}
 	
 	public Set<String> getCategories(String itemId) { 
-		return null;
+		if (connection == null) {
+			System.err.println("DB connection failed"); 
+			return null;
+		}
+		Set<String> categories = new HashSet<>();
+		try {
+			String sql = "SELECT category FROM categories WHERE item_id = ?"; 
+			PreparedStatement ps = connection.prepareStatement(sql);
+			ps.setString(1, itemId);
+			ResultSet rs = ps.executeQuery();
+			while (rs.next()) { 
+				categories.add(rs.getString("category"));
+			}
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		return categories;
 	}
 	
 	public List<Item> searchItems(double lat, double lon, String term) { 
@@ -111,8 +172,9 @@ public class DBConnection {
 			ps.setString(2, item.getName());
 			ps.setDouble(3, item.getRating());
 			ps.setString(4, item.getAddress());
-			ps.setString(5, item.getUrl());
-			ps.setString(6, item.getImageUrl());
+			ps.setString(5, item.getImageUrl());
+			ps.setString(6, item.getUrl());
+			
 			ps.setDouble(7, item.getDistance());
 			ps.execute();
 			
